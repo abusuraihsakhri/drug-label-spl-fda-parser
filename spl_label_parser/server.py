@@ -2,7 +2,6 @@
 FastAPI REST API Server for SPL-LabelParser: FDA Structured Product Labeling & Black Box Warning.
 """
 from typing import Dict, Any
-from .models import FrontierPayload
 from .agents import SPLLabelCoordinator
 
 coordinator = SPLLabelCoordinator()

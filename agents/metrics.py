@@ -1,7 +1,6 @@
 """
 Prometheus Operational Metrics Exporter for drug-label-spl-fda-parser.
 """
-import time
 from typing import Dict, Any
 
 class SystemMetricsCollector:

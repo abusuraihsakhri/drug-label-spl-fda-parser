@@ -1,7 +1,7 @@
 # Drug Label SPL FDA Parser
 
-> **Domain:** Clinical Decision Support & Biomedical Computing  
-> **Reference Guidelines & Standards:** `Standard Clinical Formulations & ISO/IEC Quality Frameworks`
+> **Domain:** Clinical Decision Support & Biomedical Computing
+> **Standards:** FDA Structured Product Labeling (SPL) XML, CAP / CLSI / ISO
 
 <div align="center">
 
@@ -16,84 +16,170 @@
 
 ---
 
-## 📖 What It Does
+## What It Does
 
-Drug Label Spl Fda Parser
+Drug Label SPL FDA Parser is an enterprise-grade analytical platform for evaluating clinical and biomedical task payloads. It processes structured task data through a multi-agent worker architecture, generating consensus dossiers with cryptographic audit trails.
+
+The system provides:
+
+- **Multi-Agent Evaluation**: Three specialized workers (InvariantQC, SafetyEscalation, ProtocolConformance) independently assess each task
+- **Consensus Generation**: Aggregates worker alerts into a unified dossier with overall urgency classification
+- **Cryptographic Audit Trail**: HMAC-SHA256 chained tamper-evident logging for every evaluation
+- **Zero-PHI Outbound Guard**: Active pattern detection blocking protected health information from outbound content
+- **FastAPI REST API**: OpenAPI 3.1 endpoints for programmatic access
+- **Prometheus Metrics**: Operational telemetry export
 
 ---
 
-## ⚙️ Key Capabilities & Algorithmic Modules
+## Architecture
 
-- **Deterministic Calculation Engine**: Strict compliance with standard reference formulations and thresholds.
-- **Risk & Urgency Classification**: Multi-tier categorization with automated clinical/operational action recommendations.
-- **Validation & Guardrails**: Rigorous input bounds checking and anomaly detection.
+```
+drug-label-spl-fda-parser/
+├── agents/                    # Core enterprise agent framework
+│   ├── base.py               # PHI guard, HMAC audit trail, security exceptions
+│   ├── models.py             # Pydantic v2 schemas (SystemTaskPayload, ConsensusDossier)
+│   ├── workers.py            # Specialized evaluation workers
+│   ├── supervisor.py         # Multi-agent orchestrator
+│   ├── api.py                # FastAPI REST endpoints
+│   ├── metrics.py            # Prometheus metrics exporter
+│   ├── learning.py           # Bayesian calibration engine
+│   ├── streamer.py           # WebSocket telemetry broadcaster
+│   └── llm_factory.py        # LLM provider abstraction
+├── spl_label_parser/          # Alternative SPL-focused implementation
+│   ├── models.py             # Frontier data models
+│   ├── agents.py             # SPL-specific coordination agents
+│   ├── engine.py             # Core evaluation engine
+│   ├── server.py             # FastAPI server factory
+│   └── cli.py                # SPL-specific CLI
+├── tests/                     # Pytest test suite
+├── web/                       # Operations console (HTML/JS)
+├── cli.py                     # Main CLI entry point
+├── enrichment.py              # Domain enrichment engines
+├── simulator.py               # High-throughput stress testing
+└── pyproject.toml             # Project configuration
+```
 
 ---
 
-## 💻 CLI Quickstart & Usage
+## Installation
 
-### 1. Guided Interactive Mode
 ```bash
-python cli.py
+# Clone the repository
+git clone https://github.com/abusuraihsakhri/drug-label-spl-fda-parser.git
+cd drug-label-spl-fda-parser
+
+# Install dependencies
+pip install fastapi uvicorn pydantic pytest
+
+# Set required environment variable for audit trail
+export AUDIT_SECRET_KEY=$(openssl rand -hex 32)
 ```
 
-### 2. Direct Parameterized Evaluation
+---
+
+## Usage
+
+### CLI Commands
+
+#### Single Task Evaluation
 ```bash
-python cli.py --task-id <value> --target <value> --primary <value> --secondary <value>
+python cli.py audit --task-id TASK-001 --target TARGET-01 --primary 28.5 --secondary 14.2 --critical --status DISCORDANT
 ```
 
-### Parameter Reference
-- `--task-id`: Specifies input measurement or parameter value.
-- `--target`: Specifies input measurement or parameter value.
-- `--primary`: Specifies input measurement or parameter value.
-- `--secondary`: Specifies input measurement or parameter value.
-- `--critical`: Specifies input measurement or parameter value.
-- `--status`: Specifies input measurement or parameter value.
-- `--input`: Specifies input measurement or parameter value.
-- `--output`: Specifies input measurement or parameter value.
+#### Batch Processing
+```bash
+python cli.py batch -i sample.csv -o results.csv
+```
+
+#### Supervisory Chat
+```bash
+python cli.py chat "What is the system status?"
+```
+
+#### Verify Audit Trail
+```bash
+python cli.py verify-audit
+```
+
+#### Launch REST API Server
+```bash
+python cli.py serve --host 127.0.0.1 --port 8000
+```
+
+### REST API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check and system metadata |
+| `/metrics` | GET | Prometheus operational metrics |
+| `/api/audit` | POST | Submit task for multi-agent evaluation |
+| `/api/chat` | POST | Supervisory conversational query |
+| `/api/audit/logs` | GET | Retrieve and verify HMAC audit trail |
 
 ### Input Data Schema
 
-| Field | Description | Requirement |
-|:------|:------------|:------------|
-| `task_id` | Parameter / observation metric | Required |
-| `target_identifier` | Parameter / observation metric | Required |
-| `primary_metric` | Parameter / observation metric | Required |
-| `secondary_metric` | Parameter / observation metric | Required |
-| `is_critical_flag` | Parameter / observation metric | Required |
-| `status_descriptor` | Parameter / observation metric | Required |
+| Field | Type | Description | Required |
+|-------|------|-------------|----------|
+| `task_id` | string | Unique task/case identifier | Yes |
+| `target_identifier` | string | Entity or target key | Yes |
+| `primary_metric` | float | Primary measurement or score (finite) | Yes |
+| `secondary_metric` | float | Secondary kinetic/confidence score (finite) | No (default: 0.0) |
+| `status_descriptor` | string | Status code or phenotype descriptor | No (default: "NOMINAL") |
+| `is_critical_flag` | boolean | Emergency escalation trigger | No (default: false) |
 
 ---
 
-## 🛡️ Security & Enterprise Architecture
+## Security
 
-* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
-* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
-* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
-* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
-* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
+### Zero-PHI Outbound Guard
+Active regex-based detection blocks outbound content containing:
+- Medical Record Numbers (MRN)
+- Social Security Numbers (SSN)
+- Phone numbers and email addresses
+- Date of birth patterns
+- Patient name patterns
+
+### HMAC-SHA256 Audit Trail
+- Every evaluation and state transition is cryptographically signed
+- Chained hash structure detects tampering
+- Requires `AUDIT_SECRET_KEY` environment variable (minimum 16 characters)
+
+### Input Validation
+- Metric values must be finite (NaN/Infinity rejected)
+- Identifier fields must be non-empty
+- PHI patterns blocked in all outbound content
 
 ---
 
-## 🧪 Testing & Verification
-
-Run the automated test suite:
+## Testing
 
 ```bash
+# Run full test suite
 pytest -v
-```
 
-Execute high-throughput batch simulation benchmarks:
+# Run with coverage
+pytest -v --cov=agents --cov=spl_label_parser
 
-```bash
-python simulator.py --tasks 1000 --concurrency 8
+# Run simulation benchmark
+python simulator.py --tasks 1000
 ```
 
 ---
 
-## 🐳 Container Deployment
+## Docker Deployment
 
 ```bash
+# Build and run with Docker Compose
+export AUDIT_SECRET_KEY=$(openssl rand -hex 32)
+docker-compose up --build
+
+# Or use Docker directly
 docker build -t drug-label-spl-fda-parser .
-docker run -p 8000:8000 drug-label-spl-fda-parser
+docker run -p 8000:8000 -e AUDIT_SECRET_KEY=$AUDIT_SECRET_KEY drug-label-spl-fda-parser
 ```
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
