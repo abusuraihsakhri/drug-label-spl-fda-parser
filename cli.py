@@ -37,6 +37,11 @@ def main(argv=None):
     # Verify Audit
     subparsers.add_parser("verify-audit", help="Verify HMAC audit trail integrity")
 
+    # Parse SPL XML
+    p_spl = subparsers.add_parser("parse-spl", help="Extract FDA SPL XML sections as JSON")
+    p_spl.add_argument("input", help="Path to UTF-8 SPL XML")
+    p_spl.add_argument("-o", "--output", help="JSON output path (default: stdout)")
+
     # Serve
     p_serve = subparsers.add_parser("serve", help="Launch FastAPI REST server")
     p_serve.add_argument("--host", default="127.0.0.1")
@@ -124,6 +129,21 @@ def main(argv=None):
             for err in errors:
                 print(f"  - {err}")
         return 0
+
+    if args.command == "parse-spl":
+        from spl_label_parser.xml_parser import parse_spl_file
+        try:
+            result = parse_spl_file(args.input)
+            output = json.dumps(result, ensure_ascii=False, indent=2)
+            if args.output:
+                with open(args.output, "w", encoding="utf-8") as f:
+                    f.write(output + "\n")
+            else:
+                print(output)
+            return 0
+        except (OSError, ValueError) as exc:
+            print(f"SPL parsing failed: {exc}", file=sys.stderr)
+            return 2
 
     if args.command == "serve":
         import uvicorn

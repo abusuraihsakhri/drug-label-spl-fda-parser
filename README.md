@@ -1,185 +1,62 @@
 # Drug Label SPL FDA Parser
 
-> **Domain:** Clinical Decision Support & Biomedical Computing
-> **Standards:** FDA Structured Product Labeling (SPL) XML, CAP / CLSI / ISO
+Extract section headings, narrative text, and identifiers from FDA Structured Product Labeling (SPL) XML. The repository also retains a separate numeric task-audit demonstration and FastAPI interface.
 
-<div align="center">
+## Features
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
-![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
-![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
+- **SPL XML extraction:** HL7 v3 namespace-aware parsing of document ID, set ID, version, effective time, title, and nested sections.
+- **Section classification:** Recognizes FDA LOINC section codes for boxed warnings, indications, contraindications, dosage, adverse reactions, interactions, and warnings; retains unknown sections.
+- **Browser utility:** Open `web/index.html` locally or publish the `web/` directory through GitHub Pages. Select an XML file or paste XML, filter sections, and export JSON or CSV. No server, account, or external data transfer is required.
+- **Python CLI:** Parse SPL XML to JSON from the command line.
+- **Legacy interfaces:** The existing numeric threshold audit, batch processing, supervisory query, and REST API remain available; these are demonstrations and **do not** validate SPL labels.
 
-</div>
+## Use
 
----
+### Browser
 
-## What It Does
+Open `web/index.html` in a modern browser. Select **Load example** to try an illustrative sample; select **Parse XML** to extract its sections. Files are processed in browser memory. Export buttons download extracted data. The page works independently of Python.
 
-Drug Label SPL FDA Parser is an enterprise-grade analytical platform for evaluating clinical and biomedical task payloads. It processes structured task data through a multi-agent worker architecture, generating consensus dossiers with cryptographic audit trails.
+### Python
 
-The system provides:
-
-- **Multi-Agent Evaluation**: Three specialized workers (InvariantQC, SafetyEscalation, ProtocolConformance) independently assess each task
-- **Consensus Generation**: Aggregates worker alerts into a unified dossier with overall urgency classification
-- **Cryptographic Audit Trail**: HMAC-SHA256 chained tamper-evident logging for every evaluation
-- **Zero-PHI Outbound Guard**: Active pattern detection blocking protected health information from outbound content
-- **FastAPI REST API**: OpenAPI 3.1 endpoints for programmatic access
-- **Prometheus Metrics**: Operational telemetry export
-
----
-
-## Architecture
-
-```
-drug-label-spl-fda-parser/
-├── agents/                    # Core enterprise agent framework
-│   ├── base.py               # PHI guard, HMAC audit trail, security exceptions
-│   ├── models.py             # Pydantic v2 schemas (SystemTaskPayload, ConsensusDossier)
-│   ├── workers.py            # Specialized evaluation workers
-│   ├── supervisor.py         # Multi-agent orchestrator
-│   ├── api.py                # FastAPI REST endpoints
-│   ├── metrics.py            # Prometheus metrics exporter
-│   ├── learning.py           # Bayesian calibration engine
-│   ├── streamer.py           # WebSocket telemetry broadcaster
-│   └── llm_factory.py        # LLM provider abstraction
-├── spl_label_parser/          # Alternative SPL-focused implementation
-│   ├── models.py             # Frontier data models
-│   ├── agents.py             # SPL-specific coordination agents
-│   ├── engine.py             # Core evaluation engine
-│   ├── server.py             # FastAPI server factory
-│   └── cli.py                # SPL-specific CLI
-├── tests/                     # Pytest test suite
-├── web/                       # Operations console (HTML/JS)
-├── cli.py                     # Main CLI entry point
-├── enrichment.py              # Domain enrichment engines
-├── simulator.py               # High-throughput stress testing
-└── pyproject.toml             # Project configuration
-```
-
----
-
-## Installation
+Python 3.10 or later:
 
 ```bash
-# Clone the repository
-git clone https://github.com/abusuraihsakhri/drug-label-spl-fda-parser.git
-cd drug-label-spl-fda-parser
-
-# Install dependencies
-pip install fastapi uvicorn pydantic pytest
-
-# Set required environment variable for audit trail
-export AUDIT_SECRET_KEY=$(openssl rand -hex 32)
+python -m pip install -e .
+drug-label-spl-fda-parser parse-spl label.xml -o label.json
+# Equivalent without installation:
+python cli.py parse-spl label.xml -o label.json
 ```
 
----
+The parser accepts UTF-8 SPL documents up to 5 MiB and rejects DTD and ENTITY declarations. It extracts document text, not markup fidelity, and does not validate XML against FDA SPL schemas.
 
-## Usage
+### Optional API and legacy numeric audit
 
-### CLI Commands
-
-#### Single Task Evaluation
 ```bash
-python cli.py audit --task-id TASK-001 --target TARGET-01 --primary 28.5 --secondary 14.2 --critical --status DISCORDANT
-```
-
-#### Batch Processing
-```bash
-python cli.py batch -i sample.csv -o results.csv
-```
-
-#### Supervisory Chat
-```bash
-python cli.py chat "What is the system status?"
-```
-
-#### Verify Audit Trail
-```bash
-python cli.py verify-audit
-```
-
-#### Launch REST API Server
-```bash
+python -m pip install -e '.[api,test]'
+export AUDIT_SECRET_KEY="$(openssl rand -hex 32)"
+python cli.py audit --task-id TASK-001 --target TARGET-01 --primary 28.5 --secondary 14.2
 python cli.py serve --host 127.0.0.1 --port 8000
+python -m pytest -q
 ```
 
-### REST API Endpoints
+The existing API exposes `/health`, `/metrics`, `/api/audit`, `/api/chat`, and `/api/audit/logs`. The `/api/audit` endpoint accepts numeric task metrics, **not** an SPL XML document.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check and system metadata |
-| `/metrics` | GET | Prometheus operational metrics |
-| `/api/audit` | POST | Submit task for multi-agent evaluation |
-| `/api/chat` | POST | Supervisory conversational query |
-| `/api/audit/logs` | GET | Retrieve and verify HMAC audit trail |
+A Docker deployment is also available. Set a unique `AUDIT_SECRET_KEY` in the environment before running `docker compose up --build`. Never commit that key.
 
-### Input Data Schema
+## Privacy and security
 
-| Field | Type | Description | Required |
-|-------|------|-------------|----------|
-| `task_id` | string | Unique task/case identifier | Yes |
-| `target_identifier` | string | Entity or target key | Yes |
-| `primary_metric` | float | Primary measurement or score (finite) | Yes |
-| `secondary_metric` | float | Secondary kinetic/confidence score (finite) | No (default: 0.0) |
-| `status_descriptor` | string | Status code or phenotype descriptor | No (default: "NOMINAL") |
-| `is_critical_flag` | boolean | Emergency escalation trigger | No (default: false) |
+- The browser utility handles XML locally without sending files to a server. It does not use browser storage.
+- The Python parser rejects DTD/ENTITY declarations, caps file size, and performs text-only extraction.
+- The separate server-side numeric audit uses a keyed HMAC-SHA256 chain; keep its secret key private. Its heuristic PHI detection is **not** a guarantee of anonymization or HIPAA compliance.
+- CSV exports escape formulas to reduce spreadsheet injection risk.
+- Do not treat extraction, missing headings, or numeric audit alerts as clinical or regulatory validation. Consult the current FDA-authorized label and appropriate clinical references.
 
----
+## Technology and compatibility
 
-## Security
+The Python parser uses the standard library's `xml.etree.ElementTree`. The browser uses built-in `DOMParser`, JavaScript, and CSS; modern Chromium, Firefox, and Safari are the intended targets. FastAPI/Pydantic/Uvicorn are optional API dependencies. GitHub Actions runs the Python suite across 3.10–3.13 and checks browser JavaScript syntax.
 
-### Zero-PHI Outbound Guard
-Active regex-based detection blocks outbound content containing:
-- Medical Record Numbers (MRN)
-- Social Security Numbers (SSN)
-- Phone numbers and email addresses
-- Date of birth patterns
-- Patient name patterns
-
-### HMAC-SHA256 Audit Trail
-- Every evaluation and state transition is cryptographically signed
-- Chained hash structure detects tampering
-- Requires `AUDIT_SECRET_KEY` environment variable (minimum 16 characters)
-
-### Input Validation
-- Metric values must be finite (NaN/Infinity rejected)
-- Identifier fields must be non-empty
-- PHI patterns blocked in all outbound content
-
----
-
-## Testing
-
-```bash
-# Run full test suite
-pytest -v
-
-# Run with coverage
-pytest -v --cov=agents --cov=spl_label_parser
-
-# Run simulation benchmark
-python simulator.py --tasks 1000
-```
-
----
-
-## Docker Deployment
-
-```bash
-# Build and run with Docker Compose
-export AUDIT_SECRET_KEY=$(openssl rand -hex 32)
-docker-compose up --build
-
-# Or use Docker directly
-docker build -t drug-label-spl-fda-parser .
-docker run -p 8000:8000 -e AUDIT_SECRET_KEY=$AUDIT_SECRET_KEY drug-label-spl-fda-parser
-```
-
----
+Section classification uses the [FDA Section Headings (LOINC)](https://www.fda.gov/industry/structured-product-labeling-resources/section-headings-loinc) reference. LOINC section identification is not schema conformance validation.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).
