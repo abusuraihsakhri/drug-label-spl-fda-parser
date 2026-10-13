@@ -16,8 +16,18 @@ classifiers = [
     "Topic :: Security/Cryptography",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
+
+[project.optional-dependencies]
+api = ["fastapi>=0.100,<1", "pydantic>=2,<3", "uvicorn>=0.20,<1"]
+test = ["pytest>=8,<10"]
+
+[tool.setuptools]
+py-modules = ["cli", "enrichment", "simulator"]
+
+[tool.setuptools.packages.find]
+include = ["agents*", "spl_label_parser*"]
 
 [project.scripts]
 drug-label-spl-fda-parser = "spl_label_parser.cli:main"
