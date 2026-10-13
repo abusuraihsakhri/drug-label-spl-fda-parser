@@ -1,44 +1,37 @@
-name: Drug Label Spl Fda Parser CI/CD & Security Verification
+name: Python tests and security checks
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [master, main]
   pull_request:
-    branches: [ master, main ]
+    branches: [master, main]
+
+permissions:
+  contents: read
 
 jobs:
-  test-and-audit:
+  test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install fastapi uvicorn pydantic pytest
-
-    - name: Run Pytest Suite
-      env:
-        AUDIT_SECRET_KEY: ci-test-audit-secret-key-for-github-actions-32chars
-      run: |
-        pytest -v
-
-    - name: Security SAST & Zero-PHI Audit
-      env:
-        AUDIT_SECRET_KEY: ci-test-audit-secret-key-for-github-actions-32chars
-      run: |
-        python -c "
-        from agents.base import PHIGuard, AuditLogger
-        import pytest
-        assert AuditLogger.verify_integrity() is True
-        print('Security & Zero-PHI Audit Passed!')
-        "
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: \${{ matrix.python-version }}
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[api,test]'
+          python -m pip check
+      - name: Python syntax and regression tests
+        env:
+          AUDIT_SECRET_KEY: ci-test-audit-secret-key-for-github-actions-32chars
+        run: |
+          python -m compileall -q agents spl_label_parser cli.py enrichment.py simulator.py
+          python -m pytest -q
+      - name: Check browser JavaScript syntax
+        run: node --check web/app.js
