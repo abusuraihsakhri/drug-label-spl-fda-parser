@@ -31,3 +31,24 @@ jobs:
           path: web
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify published HTML and assets
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          base_url="${PAGE_URL%/}"
+          for attempt in $(seq 1 18); do
+            if curl -fLsS --connect-timeout 10 --max-time 20 "$base_url/" -o /tmp/spl-page.html \
+              && grep -q 'id="xml-input"' /tmp/spl-page.html \
+              && curl -fLsS --connect-timeout 10 --max-time 20 "$base_url/app.js" -o /tmp/spl-app.js \
+              && grep -q 'function parseSpl' /tmp/spl-app.js \
+              && curl -fLsS --connect-timeout 10 --max-time 20 "$base_url/style.css" -o /tmp/spl-style.css \
+              && grep -q '.shell' /tmp/spl-style.css; then
+              echo "Published HTML, JavaScript and stylesheet verified: $base_url/"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Published SPL application failed HTTP smoke test" >&2
+          exit 1
