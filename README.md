@@ -1,5 +1,7 @@
 # Drug Label SPL FDA Parser
 
+### [Open the Live Application →](https://abusuraihsakhri.github.io/drug-label-spl-fda-parser/)
+
 Extract section headings, narrative text, and identifiers from FDA Structured Product Labeling (SPL) XML. The repository also retains a separate numeric task-audit demonstration and FastAPI interface.
 
 ## Features
